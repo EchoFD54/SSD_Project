@@ -5,6 +5,7 @@ import './App.css'
 import { PublicReportForm } from './Components/PublicReportForm'
 import { FindingsBoard } from './Components/FindingsBoard'
 import { Dashboard } from './Components/Dashboard'
+import { ReportsPanel } from './Components/ReportsPanel'
 
 export default function App() {
   const [session, setSession] = useState<UserSession | null>(null)
@@ -92,6 +93,7 @@ export default function App() {
           ) : (
             <>
               <Dashboard findings={findings} />
+              <ReportsPanel />
               <FindingsBoard
                 session={session}
                 findings={findings}
