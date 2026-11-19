@@ -13,7 +13,7 @@ permissions:
   actions: read
 
 env:
-  IMAGE_NAME: ghcr.io/echofd54/ssd_project/vulntracker-api
+  IMAGE_NAME: ghcr.io/echofd54/ssd_project/vuln-tracker/vulntracker-api
 
 jobs:
   test:
