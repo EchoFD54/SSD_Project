@@ -19,8 +19,11 @@ public class AuthController : ControllerBase{
     }
 
     [HttpPost("logout")]
-    [Authorize]
     public IActionResult Logout(){
+        if (User.Identity?.IsAuthenticated != true){
+            return Redirect("/");
+        }
+
         return SignOut(
             new AuthenticationProperties { RedirectUri = "/" },
             CookieAuthenticationDefaults.AuthenticationScheme,

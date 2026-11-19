@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
@@ -14,7 +15,6 @@ builder.Services.AddOpenApi();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
 })
 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
 {
@@ -80,14 +80,58 @@ builder.Services.AddScoped<IFindingRepository, FindingRepository>();
 
 var app = builder.Build();
 
+static void ApplySecurityHeaders(HttpResponse response)
+{
+    response.Headers["X-Content-Type-Options"] = "nosniff";
+    response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
+    response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+    response.Headers["Pragma"] = "no-cache";
+    response.Headers["X-Frame-Options"] = "DENY";
+    response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+}
+
+static bool IsIdpUnavailable(Exception? ex)
+{
+    while (ex is not null)
+    {
+        if (ex is HttpRequestException ||
+            (ex is InvalidOperationException && ex.Message.Contains("IDX20803", StringComparison.Ordinal)))
+        {
+            return true;
+        }
+        ex = ex.InnerException;
+    }
+    return false;
+}
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        ApplySecurityHeaders(context.Response);
+
+        var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        if (IsIdpUnavailable(error))
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Identity provider is temporarily unavailable."
+            });
+            return;
+        }
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "An unexpected error occurred."
+        });
+    });
+});
+
 app.Use(async (context, next) =>
 {
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-    context.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
-    context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
-    context.Response.Headers["Pragma"] = "no-cache";
-    context.Response.Headers["X-Frame-Options"] = "DENY";
-    context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+    ApplySecurityHeaders(context.Response);
     await next();
 });
 
