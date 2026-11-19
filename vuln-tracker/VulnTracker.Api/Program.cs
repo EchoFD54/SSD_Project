@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using VulnTracker.Api.Authorization;
 using VulnTracker.Api.Data;
+using VulnTracker.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,11 @@ builder.Services.AddControllers()
     });
     
 builder.Services.AddOpenApi();
-
+builder.Services.AddScoped<IFindingRepository, FindingRepository>();
+builder.Services.Configure<EncryptionOptions>(
+    builder.Configuration.GetSection(EncryptionOptions.SectionName));
+builder.Services.AddSingleton<IFieldEncryptionService, AesGcmFieldEncryptionService>();
+builder.Services.AddScoped<IFindingService, FindingService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -85,6 +90,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IFindingRepository, FindingRepository>();
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<IFieldEncryptionService>();
 
 static void ApplySecurityHeaders(HttpResponse response)
 {

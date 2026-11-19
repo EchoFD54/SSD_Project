@@ -105,9 +105,12 @@ jobs:
 
       - name: Start API Container for DAST
         run: |
+          CI_TEST_KEY=$(openssl rand -base64 32)
           docker run -d --name vulntracker-api-test \
             -p 8080:8080 \
             -e ASPNETCORE_ENVIRONMENT=Development \
+            -e Encryption__ActiveKeyId=k1 \
+            -e Encryption__Keys__k1="$CI_TEST_KEY" \
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
           for i in {1..15}; do
