@@ -12,7 +12,7 @@ export default function App() {
   const [session, setSession] = useState<UserSession | null>(null);
 
   useEffect(() => {
-    fetch('/auth/me', { credentials: 'include' })
+    fetch('api/auth/me', { credentials: 'include' })
       .then((res) => res.json())
       .then((data: UserSession) => setSession(data))
       .catch(() => setSession({ isAuthenticated: false }));
@@ -34,14 +34,14 @@ export default function App() {
           <p>
             Subject ID (<code>sub</code>): <code>{session.subject}</code>
           </p>
-          <form method="post" action="/auth/logout">
+          <form method="post" action="api/auth/logout">
             <button type="submit">Sign out</button>
           </form>
         </div>
       ) : (
         <div>
           <p>You are not signed in.</p>
-          <a href="/auth/login">
+          <a href="api/auth/login">
             <button type="button">Sign in with Keycloak</button>
           </a>
         </div>
