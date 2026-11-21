@@ -5,10 +5,12 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write
   security-events: write
   actions: read
 
@@ -28,10 +30,10 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore, Build, and Test .NET
+      - name: Restore (Locked Mode), Build, and Test .NET
         working-directory: ./vuln-tracker
         run: |
-          dotnet restore
+          dotnet restore --locked-mode
           dotnet build --no-restore --configuration Release
           dotnet test --no-build --configuration Release --verbosity normal
 
@@ -94,6 +96,26 @@ jobs:
       - name: Build Docker Image
         run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} -f vuln-tracker/VulnTracker.Api/Dockerfile ./vuln-tracker
 
+      - name: Generate CycloneDX SBOM for Container Image (Syft)
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          image: '${{ env.IMAGE_NAME }}:${{ github.sha }}'
+          format: 'cyclonedx-json'
+          output-file: 'vulntracker-api-sbom.cdx.json'
+          artifact-name: 'vulntracker-api-sbom.cdx.json'
+          upload-artifact: true
+          upload-release-assets: false
+
+      - name: Scan Generated SBOM for Vulnerabilities (Grype)
+        uses: anchore/scan-action@v7
+        with:
+          sbom: 'vulntracker-api-sbom.cdx.json'
+          grype-version: 'v0.122.1'
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
+
       - name: Scan Docker Image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
@@ -138,10 +160,14 @@ jobs:
           allow_issue_writing: false
 
   push-image:
-    name: Push Image to GHCR
+    name: Push, Sign & Attest Image (GHCR + Cosign)
     runs-on: ubuntu-latest
     needs: [dast-and-container-scan]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -154,6 +180,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Docker Image
+        id: build-push
         uses: docker/build-push-action@v6
         with:
           context: ./vuln-tracker
@@ -162,3 +189,35 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Generate SBOM for Published Digest
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          image: '${{ env.IMAGE_NAME }}@${{ steps.build-push.outputs.digest }}'
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          format: 'cyclonedx-json'
+          output-file: 'published-sbom.cdx.json'
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.3
+
+      - name: Sign Container Image Digest (Sigstore Keyless)
+        run: |
+          cosign sign --yes "${{ env.IMAGE_NAME }}@${{ steps.build-push.outputs.digest }}"
+
+      - name: Attach Signed CycloneDX SBOM Attestation
+        run: |
+          cosign attest --yes \
+            --type cyclonedx \
+            --predicate published-sbom.cdx.json \
+            "${{ env.IMAGE_NAME }}@${{ steps.build-push.outputs.digest }}"
+
+      - name: Verify Image Signature Against GitHub OIDC Identity
+        run: |
+          cosign verify \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/ci-cd.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ env.IMAGE_NAME }}@${{ steps.build-push.outputs.digest }}"
