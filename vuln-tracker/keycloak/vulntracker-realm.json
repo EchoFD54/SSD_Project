@@ -1,0 +1,108 @@
+{
+  "realm": "vulntracker",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "PM", "description": "Project Manager - full triage, SLA, user & audit access" },
+      { "name": "Analyst", "description": "Security Analyst - create, triage, assign & update findings" },
+      { "name": "Developer", "description": "Developer - view findings and update assigned findings" },
+      { "name": "Auditor", "description": "Auditor - read-only access to findings, reports & audit logs" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "vulntracker-api",
+      "name": "VulnTracker Backend API (BFF)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:5173",
+      "redirectUris": [
+        "http://localhost:5173/signin-oidc"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:5173/*",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Manager",
+      "email": "alice.pm@vulntracker.local",
+      "credentials": [
+        { "type": "password", "value": "PmPass123!", "temporary": false }
+      ],
+      "realmRoles": ["PM"]
+    },
+    {
+      "username": "dana",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dana",
+      "lastName": "Analyst",
+      "email": "dana.analyst@vulntracker.local",
+      "credentials": [
+        { "type": "password", "value": "AnalystPass123!", "temporary": false }
+      ],
+      "realmRoles": ["Analyst"]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Developer",
+      "email": "bob.dev@vulntracker.local",
+      "credentials": [
+        { "type": "password", "value": "DevPass123!", "temporary": false }
+      ],
+      "realmRoles": ["Developer"]
+    },
+    {
+      "username": "carol",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carol",
+      "lastName": "Auditor",
+      "email": "carol.auditor@vulntracker.local",
+      "credentials": [
+        { "type": "password", "value": "AuditorPass123!", "temporary": false }
+      ],
+      "realmRoles": ["Auditor"]
+    }
+  ]
+}
