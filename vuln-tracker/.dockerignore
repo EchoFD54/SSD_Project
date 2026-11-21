@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/out/
+client/
+.vs/
+.git/
+*.cdx.json
+*.user
