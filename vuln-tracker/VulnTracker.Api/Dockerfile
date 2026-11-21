@@ -10,6 +10,7 @@ RUN dotnet publish -c Release --no-restore -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
+RUN apk upgrade --no-cache
 USER app
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "VulnTracker.Api.dll"]
