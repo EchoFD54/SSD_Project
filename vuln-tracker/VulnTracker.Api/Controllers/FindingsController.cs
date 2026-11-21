@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using VulnTracker.Api.Authorization;
 using VulnTracker.Api.DTOs;
 using VulnTracker.Api.Services;
@@ -19,6 +20,7 @@ public class FindingsController(IFindingService findingService, IAuthorizationSe
 
     [HttpPost("public")]
     [AllowAnonymous]
+    [EnableRateLimiting("public-intake")]
     public async Task<IActionResult> SubmitPublic([FromBody] PublicFindingSubmissionDto dto){
         var created = await findingService.CreatePublicAsync(dto);
 
