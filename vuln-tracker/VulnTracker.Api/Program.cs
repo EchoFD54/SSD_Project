@@ -26,6 +26,9 @@ builder.Services.AddScoped<IFindingService, FindingService>();
 builder.Services.Configure<SigningOptions>(
     builder.Configuration.GetSection(SigningOptions.SectionName));
 builder.Services.AddSingleton<IReportSigningService, ReportSigningService>();
+builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddSingleton<IAuditIntegrityService, AuditIntegrityService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -94,8 +97,8 @@ builder.Services.AddScoped<IFindingRepository, FindingRepository>();
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<IFieldEncryptionService>();
-_ = app.Services.GetRequiredService<IFieldEncryptionService>();
 _ = app.Services.GetRequiredService<IReportSigningService>();
+_ = app.Services.GetRequiredService<IAuditIntegrityService>();
 
 static void ApplySecurityHeaders(HttpResponse response)
 {

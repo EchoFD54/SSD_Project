@@ -10,6 +10,13 @@ namespace VulnTracker.Api.Controllers;
 [Route("api/[controller]")]
 [Authorize]
 public class FindingsController(IFindingService findingService, IAuthorizationService authorizationService) : ControllerBase{
+    private AuditActor GetCurrentActor(){
+        var sub = User.FindFirst("sub")?.Value ?? "unknown";
+        var username = User.FindFirst("preferred_username")?.Value ?? "unknown";
+        var roles = string.Join(",", User.FindAll("roles").Select(c => c.Value));
+        return new AuditActor(sub, username, string.IsNullOrEmpty(roles) ? "None" : roles);
+    }
+
     [HttpPost("public")]
     [AllowAnonymous]
     public async Task<IActionResult> SubmitPublic([FromBody] PublicFindingSubmissionDto dto){
@@ -32,7 +39,7 @@ public class FindingsController(IFindingService findingService, IAuthorizationSe
     [HttpPost]
     [Authorize(Policy = AuthPolicies.CanCreateFindings)]
     public async Task<IActionResult> Create([FromBody] CreateFindingDto dto){
-        var created = await findingService.CreateInternalAsync(dto);
+        var created = await findingService.CreateInternalAsync(dto, GetCurrentActor());
         return CreatedAtAction(nameof(GetAll), new { id = created.Id }, created);
     }
 
@@ -50,21 +57,21 @@ public class FindingsController(IFindingService findingService, IAuthorizationSe
             return Forbid();
         }
 
-        var updated = await findingService.UpdateAsync(id, dto);
+        var updated = await findingService.UpdateAsync(id, dto, GetCurrentActor());
         return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpPatch("{id:guid}/assign")]
     [Authorize(Policy = AuthPolicies.CanAssignFindings)]
     public async Task<IActionResult> Assign(Guid id, [FromBody] AssignFindingDto dto){
-        var updated = await findingService.AssignAsync(id, dto.AssignedToUserId);
+        var updated = await findingService.AssignAsync(id, dto.AssignedToUserId, GetCurrentActor());
         return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpPatch("{id:guid}/sla")]
     [Authorize(Policy = AuthPolicies.CanSetSla)]
     public async Task<IActionResult> SetSla(Guid id, [FromBody] SetSlaDto dto){
-        var updated = await findingService.SetSlaAsync(id, dto.SlaDueDate);
+        var updated = await findingService.SetSlaAsync(id, dto.SlaDueDate, GetCurrentActor());
         return updated is null ? NotFound() : Ok(updated);
     }
 }
