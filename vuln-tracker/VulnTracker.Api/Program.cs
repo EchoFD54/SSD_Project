@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using VulnTracker.Api.Authorization;
 using VulnTracker.Api.Data;
+using VulnTracker.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,17 @@ builder.Services.AddControllers()
     });
     
 builder.Services.AddOpenApi();
-
+builder.Services.AddScoped<IFindingRepository, FindingRepository>();
+builder.Services.Configure<EncryptionOptions>(
+    builder.Configuration.GetSection(EncryptionOptions.SectionName));
+builder.Services.AddSingleton<IFieldEncryptionService, AesGcmFieldEncryptionService>();
+builder.Services.AddScoped<IFindingService, FindingService>();
+builder.Services.Configure<SigningOptions>(
+    builder.Configuration.GetSection(SigningOptions.SectionName));
+builder.Services.AddSingleton<IReportSigningService, ReportSigningService>();
+builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddSingleton<IAuditIntegrityService, AuditIntegrityService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -85,6 +96,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IFindingRepository, FindingRepository>();
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<IFieldEncryptionService>();
+_ = app.Services.GetRequiredService<IReportSigningService>();
+_ = app.Services.GetRequiredService<IAuditIntegrityService>();
 
 static void ApplySecurityHeaders(HttpResponse response)
 {

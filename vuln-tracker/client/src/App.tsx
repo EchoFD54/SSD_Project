@@ -5,18 +5,22 @@ import './App.css'
 import { PublicReportForm } from './Components/PublicReportForm'
 import { FindingsBoard } from './Components/FindingsBoard'
 import { Dashboard } from './Components/Dashboard'
+import { ReportsPanel } from './Components/ReportsPanel'
+import { AuditLogPanel } from './Components/AuditLogPanel'
 
 export default function App() {
   const [session, setSession] = useState<UserSession | null>(null)
   const [findings, setFindings] = useState<Finding[]>([])
   const [view, setView] = useState<'workspace' | 'public'>('workspace')
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [auditRefresh, setAuditRefresh] = useState(0)
 
   const loadFindings = useCallback(async () => {
     setLoadError(null)
     const res = await fetch('/api/findings')
     if (res.ok) {
       setFindings(await res.json())
+      setAuditRefresh((n) => n + 1)
     } else if (res.status === 403) {
       setLoadError('Your account does not have a role authorized to view internal findings.')
     }
@@ -37,6 +41,10 @@ export default function App() {
   if (!session) {
     return <main className="container"><p>Loading...</p></main>
   }
+
+  const canReadAuditLogs = (session?.roles ?? []).some(
+  (r) => r === 'PM' || r === 'Auditor'
+ )
 
   return (
     <div className="container">
@@ -92,11 +100,13 @@ export default function App() {
           ) : (
             <>
               <Dashboard findings={findings} />
+              <ReportsPanel />
               <FindingsBoard
                 session={session}
                 findings={findings}
                 onRefresh={loadFindings}
               />
+              {canReadAuditLogs && <AuditLogPanel refreshTrigger={auditRefresh} />}
             </>
           )}
         </main>

@@ -6,7 +6,7 @@ COPY . .
 WORKDIR "/src/VulnTracker.Api"
 RUN dotnet publish -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
 USER app
 COPY --from=build /app/publish .

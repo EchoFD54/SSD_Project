@@ -188,3 +188,23 @@ code {
   border-radius: 4px;
   font-size: 0.85em;
 }
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.audit-table th,
+.audit-table td {
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #334155;
+  vertical-align: top;
+}
+
+.audit-table th {
+  color: #94a3b8;
+  font-weight: 600;
+  background: #0f172a;
+}
